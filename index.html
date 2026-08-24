@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorteio de Brindes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg-0:#0d1220;
+    --bg-1:#161d33;
+    --panel:#1b2340;
+    --panel-line: rgba(232,213,168,0.12);
+    --cream:#f3ead2;
+    --cream-dim:#d9cdac;
+    --gold:#e3a83b;
+    --gold-soft: rgba(227,168,59,0.16);
+    --red:#c04630;
+    --red-soft: rgba(192,70,48,0.14);
+    --green:#4c8c5f;
+    --green-soft: rgba(76,140,95,0.16);
+    --ink:#241a10;
+    --text:#f3ead2;
+    --text-dim:#a9a2c2;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(circle at 15% -10%, rgba(227,168,59,0.10), transparent 45%),
+      radial-gradient(circle at 100% 0%, rgba(192,70,48,0.12), transparent 40%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+    color:var(--text);
+    font-family:'Manrope', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:48px 24px 96px;
+  }
+
+  header.hero{
+    text-align:center;
+    margin-bottom:44px;
+    position:relative;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.32em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-bottom:14px;
+  }
+  h1.title{
+    font-family:'Anton', sans-serif;
+    font-weight:400;
+    font-size:clamp(40px, 7vw, 68px);
+    letter-spacing:0.01em;
+    line-height:0.95;
+    margin:0 0 14px;
+    color:var(--cream);
+    text-shadow: 0 0 40px rgba(227,168,59,0.18);
+  }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:15px;
+    max-width:480px;
+    margin:0 auto;
+    line-height:1.55;
+  }
+
+  .ticket-divider{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:40px 0 28px;
+    color:var(--text-dim);
+  }
+  .ticket-divider .num{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.18em;
+    color:var(--gold);
+    white-space:nowrap;
+  }
+  .ticket-divider .line{
+    flex:1;
+    height:1px;
+    background: repeating-linear-gradient(90deg, var(--panel-line) 0 6px, transparent 6px 12px);
+  }
+
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  @media (max-width:680px){ .grid2{ grid-template-columns:1fr; } }
+
+  .dropzone{
+    background:var(--panel);
+    border:1.5px dashed var(--panel-line);
+    border-radius:14px;
+    padding:26px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, transform .15s ease;
+    position:relative;
+  }
+  .dropzone:hover{ border-color:var(--gold); background:#1e2748; }
+  .dropzone.filled{ border-style:solid; border-color:var(--gold); background:linear-gradient(180deg,#22294a,#1b2340); }
+  .dropzone input{ display:none; }
+  .dz-icon{
+    width:38px; height:38px; margin:0 auto 12px;
+    border-radius:50%;
+    background:var(--gold-soft);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--gold); font-size:18px;
+  }
+  .dz-label{ font-weight:700; font-size:15px; color:var(--cream); margin-bottom:4px; }
+  .dz-hint{ font-size:12.5px; color:var(--text-dim); }
+  .dz-filename{
+    margin-top:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--gold);
+    word-break:break-all;
+  }
+  .dz-count{
+    display:inline-block;
+    margin-top:8px;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--panel-line);
+    border-radius:999px;
+    padding:3px 10px;
+  }
+
+  .config-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+  }
+  .config-row .label{ font-size:13.5px; color:var(--text-dim); }
+  .config-row .label b{ color:var(--cream); font-weight:700; }
+  select{
+    background:#0f1526;
+    color:var(--cream);
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    padding:8px 12px;
+    font-family:'Manrope', sans-serif;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+
+  .warning{
+    background:rgba(192,70,48,0.14);
+    border:1px solid rgba(192,70,48,0.4);
+    color:#f0b7a9;
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:13.5px;
+    margin:16px 0;
+  }
+
+  .btn{
+    font-family:'Manrope', sans-serif;
+    font-weight:800;
+    font-size:15px;
+    letter-spacing:0.01em;
+    border:none;
+    border-radius:12px;
+    padding:16px 28px;
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  }
+  .btn-primary{
+    width:100%;
+    background:linear-gradient(180deg, #f0bb5c, var(--gold));
+    color:#241a10;
+    box-shadow:0 10px 30px -8px rgba(227,168,59,0.5);
+    margin-top:18px;
+  }
+  .btn-primary:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
+  .btn-primary:not(:disabled):hover{ transform:translateY(-1px); }
+  .btn-secondary{
+    background:transparent;
+    color:var(--cream);
+    border:1px solid var(--panel-line);
+    padding:11px 18px;
+    font-size:13.5px;
+    font-weight:700;
+  }
+  .btn-secondary:hover{ border-color:var(--gold); color:var(--gold); }
+
+  .actions-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top:36px;
+    flex-wrap:wrap;
+  }
+
+  /* ticket stub */
+  .tickets{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .ticket{
+    position:relative;
+    display:grid;
+    grid-template-columns:64px 1fr auto;
+    align-items:center;
+    background:var(--cream);
+    color:var(--ink);
+    border-radius:10px;
+    overflow:hidden;
+    opacity:0;
+    transform:translateY(10px);
+    animation:riseIn .5s ease forwards;
+  }
+  @keyframes riseIn{ to{ opacity:1; transform:translateY(0); } }
+
+  .ticket .idx{
+    background:var(--ink);
+    color:var(--gold);
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    writing-mode:vertical-rl;
+    text-orientation:mixed;
+    letter-spacing:0.1em;
+    padding:14px 0;
+  }
+  .ticket .body{
+    padding:16px 4px 16px 18px;
+    border-right:1.5px dashed rgba(36,26,16,0.28);
+    position:relative;
+  }
+  .ticket .body::before, .ticket .body::after{
+    content:'';
+    position:absolute;
+    right:-8px;
+    width:16px; height:16px;
+    background:var(--bg-1);
+    border-radius:50%;
+  }
+  .ticket .body::before{ top:-8px; }
+  .ticket .body::after{ bottom:-8px; }
+  .ticket .gift-name{
+    font-weight:800;
+    font-size:15.5px;
+    margin-bottom:3px;
+  }
+  .ticket .winner-name{
+    font-size:13.5px;
+    color:#5a4b30;
+  }
+  .ticket .winner-name b{ color:var(--red); font-weight:800; }
+  .ticket .stamp{
+    padding:0 20px;
+    font-family:'Anton', sans-serif;
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--red);
+    border:2px solid var(--red);
+    border-radius:6px;
+    padding:5px 10px;
+    transform:rotate(6deg);
+    opacity:0.85;
+    margin-right:16px;
+  }
+
+  .ticket .body{ padding-bottom:14px; }
+  .decision-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:9px;
+  }
+  .decision-btn{
+    font-family:'Manrope', sans-serif;
+    font-weight:700;
+    font-size:11.5px;
+    letter-spacing:0.03em;
+    padding:6px 12px;
+    border-radius:7px;
+    cursor:pointer;
+    border:1.5px solid transparent;
+    background:transparent;
+    transition:transform .1s ease, opacity .1s ease;
+  }
+  .decision-btn:hover{ transform:translateY(-1px); }
+  .decision-btn.btn-presente{ border-color:var(--green); color:var(--green); }
+  .decision-btn.btn-presente:hover{ background:var(--green-soft); }
+  .decision-btn.btn-ausente{ border-color:var(--red); color:var(--red); }
+  .decision-btn.btn-ausente:hover{ background:var(--red-soft); }
+
+  .status-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11.5px;
+    font-weight:800;
+    letter-spacing:0.03em;
+    margin-top:9px;
+    padding:5px 11px;
+    border-radius:7px;
+  }
+  .status-badge.present{ background:var(--green-soft); color:var(--green); }
+  .status-badge.no-reserve{ background:var(--red-soft); color:var(--red); font-style:italic; font-weight:600; }
+
+  .ticket.is-present{ box-shadow: inset 0 0 0 2px var(--green); }
+
+  .absent-panel{
+    background:var(--panel);
+    border:1px solid var(--red-soft);
+    border-radius:14px;
+    padding:20px 22px;
+    margin-top:20px;
+  }
+  .absent-panel .section-title{ color:var(--cream); }
+  .absent-list{
+    list-style:none;
+    margin:0; padding:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 24px;
+  }
+  @media (max-width:560px){ .absent-list{ grid-template-columns:1fr; } }
+  .absent-list li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--panel-line);
+    font-size:13.5px;
+    color:var(--cream-dim);
+  }
+  .absent-list li .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--red);
+    flex-shrink:0;
+  }
+
+  .reserve-panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:20px 22px;
+  }
+  .reserve-list{
+    list-style:none;
+    margin:0; padding:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 24px;
+  }
+  @media (max-width:560px){ .reserve-list{ grid-template-columns:1fr; } }
+  .reserve-list li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--panel-line);
+    font-size:13.5px;
+    opacity:0;
+    animation:riseIn .4s ease forwards;
+  }
+  .reserve-list li .pos{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--gold);
+    font-size:11.5px;
+    min-width:26px;
+  }
+  .reserve-list li .name{ color:var(--cream); }
+
+  .section-title{
+    font-family:'Anton', sans-serif;
+    font-size:20px;
+    letter-spacing:0.01em;
+    color:var(--cream);
+    margin:0 0 4px;
+  }
+  .section-sub{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin:0 0 16px;
+  }
+
+  .hidden{ display:none !important; }
+  .footer-note{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:40px;
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Sorteio de Brindes</div>
+    <h1 class="title">Semana do Servidor da UFMG</h1>
+    <p class="subtitle">Carregue a planilha de brindes e a de participantes. Cada brinde recebe um ganhador único, e o restante vira a fila de reservas.</p>
+  </header>
+
+  <!-- STEP 1: UPLOAD -->
+  <div id="step-upload">
+    <div class="ticket-divider"><span class="num">PASSO 1</span><span class="line"></span><span class="num">CARREGAR PLANILHAS</span></div>
+
+    <div class="grid2">
+      <label class="dropzone" id="dz-gifts">
+        <input type="file" id="file-gifts" accept=".xlsx,.xls">
+        <div class="dz-icon">🎁</div>
+        <div class="dz-label">Lista de brindes</div>
+        <div class="dz-hint">.xlsx com um nome de brinde por linha</div>
+        <div class="dz-filename" id="fn-gifts"></div>
+      </label>
+
+      <label class="dropzone" id="dz-people">
+        <input type="file" id="file-people" accept=".xlsx,.xls">
+        <div class="dz-icon">🎟️</div>
+        <div class="dz-label">Lista de participantes</div>
+        <div class="dz-hint">.xlsx com um nome de participante por linha</div>
+        <div class="dz-filename" id="fn-people"></div>
+      </label>
+    </div>
+
+    <div id="config-area" class="hidden" style="margin-top:22px;">
+      <div class="ticket-divider"><span class="num">PASSO 2</span><span class="line"></span><span class="num">CONFERIR COLUNAS</span></div>
+      <div class="config-row hidden" id="row-gifts-col">
+        <div class="label">Coluna com o nome do <b>brinde</b>:</div>
+        <select id="select-gifts-col"></select>
+      </div>
+      <div class="config-row hidden" id="row-people-col">
+        <div class="label">Coluna com o nome do <b>participante</b>:</div>
+        <select id="select-people-col"></select>
+      </div>
+
+      <div class="config-row">
+        <div class="label"><b id="count-gifts">0</b> brindes carregados</div>
+        <div class="label"><b id="count-people">0</b> participantes carregados</div>
+      </div>
+
+      <div id="warning-area"></div>
+
+      <button class="btn btn-primary" id="btn-draw" disabled>Realizar sorteio</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: RESULTS -->
+  <div id="step-results" class="hidden">
+    <div class="ticket-divider"><span class="num">RESULTADO</span><span class="line"></span><span class="num" id="results-count"></span></div>
+    <div class="tickets" id="tickets-container"></div>
+
+    <div style="margin-top:32px;" id="reserve-wrap">
+      <div class="reserve-panel">
+        <p class="section-title">Fila de reservas</p>
+        <p class="section-sub">Ordem para chamar caso algum ganhador não retire o brinde.</p>
+        <ul class="reserve-list" id="reserve-list"></ul>
+      </div>
+    </div>
+
+    <div class="absent-wrap hidden" id="absent-wrap">
+      <div class="absent-panel">
+        <p class="section-title">Ausentes</p>
+        <p class="section-sub">Ganhadores(as) marcados como ausentes — substituídos pelo próximo da fila de reservas.</p>
+        <ul class="absent-list" id="absent-list"></ul>
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn btn-secondary" id="btn-download">⬇ Baixar resultado (.xlsx)</button>
+      <button class="btn btn-secondary" id="btn-reset">↺ Novo sorteio</button>
+    </div>
+  </div>
+
+  <p class="footer-note">Não esqueça de baixar a planilha com os resultados.</p>
+</div>
+
+<script>
+(function(){
+  let giftsRows = null;   // {headers, data} raw parsed rows
+  let peopleRows = null;
+  let giftsNames = [];
+  let peopleNames = [];
+  let lastResults = [];
+  let lastReserve = [];
+  let absentList = [];
+
+  function parseFile(file, cb){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      const headers = (rows[0] || []).map(h => String(h).trim() || '(sem título)');
+      const dataRows = rows.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+      cb({headers, dataRows});
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function namesFromCol(parsed, colIdx){
+    return parsed.dataRows
+      .map(r => String(r[colIdx] ?? '').trim())
+      .filter(v => v !== '');
+  }
+
+  function populateSelect(sel, headers){
+    sel.innerHTML = '';
+    headers.forEach((h, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = h;
+      sel.appendChild(opt);
+    });
+  }
+
+  function refreshConfig(){
+    document.getElementById('config-area').classList.remove('hidden');
+
+    const rowGifts = document.getElementById('row-gifts-col');
+    const rowPeople = document.getElementById('row-people-col');
+
+    if (giftsRows){
+      if (giftsRows.headers.length > 1){
+        rowGifts.classList.remove('hidden');
+        populateSelect(document.getElementById('select-gifts-col'), giftsRows.headers);
+      } else { rowGifts.classList.add('hidden'); }
+      giftsNames = namesFromCol(giftsRows, parseInt(document.getElementById('select-gifts-col').value || 0));
+    }
+    if (peopleRows){
+      if (peopleRows.headers.length > 1){
+        rowPeople.classList.remove('hidden');
+        populateSelect(document.getElementById('select-people-col'), peopleRows.headers);
+      } else { rowPeople.classList.add('hidden'); }
+      peopleNames = namesFromCol(peopleRows, parseInt(document.getElementById('select-people-col').value || 0));
+    }
+
+    document.getElementById('count-gifts').textContent = giftsNames.length;
+    document.getElementById('count-people').textContent = peopleNames.length;
+
+    const warnArea = document.getElementById('warning-area');
+    const btn = document.getElementById('btn-draw');
+    warnArea.innerHTML = '';
+
+    if (giftsRows && peopleRows){
+      if (peopleNames.length < giftsNames.length){
+        warnArea.innerHTML = '<div class="warning">Há menos participantes ('+peopleNames.length+') do que brindes ('+giftsNames.length+'). Ajuste as planilhas ou as colunas selecionadas antes de sortear.</div>';
+        btn.disabled = true;
+      } else if (giftsNames.length === 0 || peopleNames.length === 0){
+        btn.disabled = true;
+      } else {
+        btn.disabled = false;
+      }
+    } else {
+      btn.disabled = true;
+    }
+  }
+
+  document.getElementById('file-gifts').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('fn-gifts').textContent = file.name;
+    document.getElementById('dz-gifts').classList.add('filled');
+    parseFile(file, function(parsed){
+      giftsRows = parsed;
+      refreshConfig();
+    });
+  });
+
+  document.getElementById('file-people').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('fn-people').textContent = file.name;
+    document.getElementById('dz-people').classList.add('filled');
+    parseFile(file, function(parsed){
+      peopleRows = parsed;
+      refreshConfig();
+    });
+  });
+
+  document.getElementById('select-gifts-col').addEventListener('change', refreshConfig);
+  document.getElementById('select-people-col').addEventListener('change', refreshConfig);
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  document.getElementById('btn-draw').addEventListener('click', function(){
+    const shuffled = shuffle(peopleNames);
+    const winners = shuffled.slice(0, giftsNames.length);
+    lastReserve = shuffled.slice(giftsNames.length);
+    lastResults = giftsNames.map((g, i) => ({ gift: g, winner: winners[i], status: 'pending' }));
+    absentList = [];
+
+    renderResults();
+    document.getElementById('step-upload').classList.add('hidden');
+    document.getElementById('step-results').classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+
+  function renderResults(){
+    document.getElementById('results-count').textContent = lastResults.length + ' BRINDES SORTEADOS';
+    const container = document.getElementById('tickets-container');
+    container.innerHTML = '';
+    lastResults.forEach((r, i) => {
+      const div = document.createElement('div');
+      div.className = 'ticket' + (r.status === 'present' ? ' is-present' : '');
+      div.style.animationDelay = (i * 0.06) + 's';
+
+      let winnerLine, decisionArea;
+      if (r.winner === null){
+        winnerLine = 'Ganhador(a): <b>—</b>';
+        decisionArea = '<div class="status-badge no-reserve">Sem reserva disponível</div>';
+      } else {
+        winnerLine = 'Ganhador(a): <b>' + escapeHtml(r.winner) + '</b>';
+        if (r.status === 'present'){
+          decisionArea = '<div class="status-badge present">✓ Presente confirmado</div>';
+        } else {
+          decisionArea =
+            '<div class="decision-row">' +
+              '<button class="decision-btn btn-presente" data-index="'+i+'" data-action="presente">Presente</button>' +
+              '<button class="decision-btn btn-ausente" data-index="'+i+'" data-action="ausente">Ausente</button>' +
+            '</div>';
+        }
+      }
+
+      div.innerHTML =
+        '<div class="idx">Nº ' + String(i+1).padStart(3,'0') + '</div>' +
+        '<div class="body">' +
+          '<div class="gift-name">' + escapeHtml(r.gift) + '</div>' +
+          '<div class="winner-name">' + winnerLine + '</div>' +
+          decisionArea +
+        '</div>' +
+        '<div class="stamp">SORTEADO</div>';
+      container.appendChild(div);
+    });
+
+    const reserveWrap = document.getElementById('reserve-wrap');
+    const reserveList = document.getElementById('reserve-list');
+    reserveList.innerHTML = '';
+    if (lastReserve.length === 0){
+      reserveWrap.classList.add('hidden');
+    } else {
+      reserveWrap.classList.remove('hidden');
+      lastReserve.forEach((name, i) => {
+        const li = document.createElement('li');
+        li.style.animationDelay = (i * 0.03) + 's';
+        li.innerHTML = '<span class="pos">' + String(i+1).padStart(2,'0') + '</span><span class="name">' + escapeHtml(name) + '</span>';
+        reserveList.appendChild(li);
+      });
+    }
+
+    const absentWrap = document.getElementById('absent-wrap');
+    const absentUl = document.getElementById('absent-list');
+    absentUl.innerHTML = '';
+    if (absentList.length === 0){
+      absentWrap.classList.add('hidden');
+    } else {
+      absentWrap.classList.remove('hidden');
+      absentList.forEach(name => {
+        const li = document.createElement('li');
+        li.innerHTML = '<span class="dot"></span><span class="name">' + escapeHtml(name) + '</span>';
+        absentUl.appendChild(li);
+      });
+    }
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function handleDecision(idx, action){
+    const item = lastResults[idx];
+    if (!item || item.winner === null) return;
+
+    if (action === 'presente'){
+      item.status = 'present';
+    } else {
+      absentList.push(item.winner);
+      if (lastReserve.length > 0){
+        item.winner = lastReserve.shift();
+        item.status = 'pending';
+      } else {
+        item.winner = null;
+        item.status = 'no-reserve';
+      }
+    }
+    renderResults();
+  }
+
+  document.getElementById('tickets-container').addEventListener('click', function(e){
+    const btn = e.target.closest('.decision-btn');
+    if (!btn) return;
+    handleDecision(parseInt(btn.dataset.index, 10), btn.dataset.action);
+  });
+
+  document.getElementById('btn-download').addEventListener('click', function(){
+    const wb = XLSX.utils.book_new();
+
+    const statusLabel = { present: 'Presente confirmado', pending: 'Aguardando confirmação', 'no-reserve': 'Sem reserva disponível' };
+    const sorteadosData = [['Brinde','Ganhador(a)','Status']].concat(
+      lastResults.map(r => [r.gift, r.winner === null ? '—' : r.winner, statusLabel[r.status] || ''])
+    );
+    const wsSorteados = XLSX.utils.aoa_to_sheet(sorteadosData);
+    XLSX.utils.book_append_sheet(wb, wsSorteados, 'Sorteados');
+
+    const reservasData = [['Posição','Nome']].concat(lastReserve.map((n, i) => [i+1, n]));
+    const wsReservas = XLSX.utils.aoa_to_sheet(reservasData);
+    XLSX.utils.book_append_sheet(wb, wsReservas, 'Reservas');
+
+    const ausentesData = [['Nome']].concat(absentList.map(n => [n]));
+    const wsAusentes = XLSX.utils.aoa_to_sheet(ausentesData);
+    XLSX.utils.book_append_sheet(wb, wsAusentes, 'Ausentes');
+
+    XLSX.writeFile(wb, 'resultado_sorteio.xlsx');
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', function(){
+    document.getElementById('step-results').classList.add('hidden');
+    document.getElementById('step-upload').classList.remove('hidden');
+    document.getElementById('config-area').classList.add('hidden');
+    document.getElementById('file-gifts').value = '';
+    document.getElementById('file-people').value = '';
+    document.getElementById('fn-gifts').textContent = '';
+    document.getElementById('fn-people').textContent = '';
+    document.getElementById('dz-gifts').classList.remove('filled');
+    document.getElementById('dz-people').classList.remove('filled');
+    giftsRows = null; peopleRows = null;
+    giftsNames = []; peopleNames = [];
+    lastResults = []; lastReserve = []; absentList = [];
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+})();
+</script>
+</body>
+</html>
